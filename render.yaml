@@ -1,0 +1,42 @@
+# Deploys BOTH halves of this repo as two Render services from one
+# blueprint: the Vite frontend (static site, built from the repo
+# root) and its own backend (web service, built from ./backend — a
+# forked, branch-scoped copy of uvactive-cloud-api that connects
+# directly to the shared UV Active Postgres database).
+#
+# Usage: Render dashboard → New → Blueprint → point at this repo.
+
+services:
+  - type: web
+    name: uvactive-branch-portal-backend
+    runtime: node
+    rootDir: backend
+    plan: starter
+    # See uvactive-admin-panel-updated/render.yaml for why this runs
+    # at start rather than build, and why it matters: this backend
+    # shares one Postgres DB with admin-panel's and cloud-api-v2's.
+    buildCommand: npm ci && npx prisma generate && npm run build
+    startCommand: node scripts/migrate-deploy-locked.cjs && npm run start
+    envVars:
+      - key: SERVICE_SCOPE
+        value: branch
+      - key: CORS_ORIGINS
+        value: https://uvactive-branch-portal.onrender.com
+      - fromGroup: uvactive-shared
+
+  - type: web
+    name: uvactive-branch-portal
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      # Fill in with the URL Render assigns uvactive-branch-portal-backend
+      # above, e.g. https://uvactive-branch-portal-backend.onrender.com/api/v1
+      - key: VITE_API_BASE_URL
+        sync: false
+      - key: VITE_GOOGLE_STAFF_CLIENT_ID
+        sync: false
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

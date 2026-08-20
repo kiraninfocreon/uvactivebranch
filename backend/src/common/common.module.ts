@@ -1,0 +1,13 @@
+import { Global, Module } from '@nestjs/common';
+import { TokenService } from './utils/token.service';
+import { RateLimitService } from './utils/rate-limit.service';
+
+// Global so AuthGuard / GymActiveGuard (used via @Auth() in every
+// feature module) can resolve TokenService without every module having
+// to import CommonModule explicitly.
+@Global()
+@Module({
+  providers: [TokenService, RateLimitService],
+  exports: [TokenService, RateLimitService],
+})
+export class CommonModule {}
